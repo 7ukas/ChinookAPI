@@ -11,6 +11,16 @@ public class ArtistsController : Controller {
         _mapper = mapper;
     }
 
+    // POST: api/Artists
+    [HttpPost]
+    public async Task<ActionResult<ArtistCreateDto>> PostArtist(ArtistCreateDto artistDto) {
+        var artist = _mapper.Map<Artist>(artistDto);
+        await _context.Artists.AddAsync(artist);
+        await _context.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(GetArtist), new { id = artist.ArtistId }, artist);
+    }
+
     // GET: api/Artists
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ArtistReadDto>>> GetArtists() {
@@ -44,26 +54,16 @@ public class ArtistsController : Controller {
         try {
             await _context.SaveChangesAsync();
         } catch (DbUpdateConcurrencyException) {
-            if (!ArtistExists(id)) return NotFound();
+            if (!_ArtistExists(id)) return NotFound();
             else throw;
         }
 
         return NoContent();
     }
 
-    // POST: api/Artists
-    [HttpPost]
-    public async Task<ActionResult<ArtistCreateDto>> PostArtist(ArtistCreateDto artistDto) {
-        var artist = _mapper.Map<Artist>(artistDto);
-        await _context.Artists.AddAsync(artist);
-        await _context.SaveChangesAsync();
-
-        return CreatedAtAction(nameof(GetArtist), new { id = artist.ArtistId }, artist);
-    }
-
     // DELETE: api/Artists/5
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(int? id)
+    public async Task<IActionResult> DeleteArtist(int? id)
     {
         var artist = await _context.Artists.FindAsync(id);
         if (artist == null) return NotFound();
@@ -74,7 +74,7 @@ public class ArtistsController : Controller {
         return NoContent();
     }
 
-    private bool ArtistExists(int id) {
+    private bool _ArtistExists(int id) {
         return (_context.Artists?.Any(e => e.ArtistId == id)).GetValueOrDefault();
     }
 }
