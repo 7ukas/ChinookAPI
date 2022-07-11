@@ -1,9 +1,7 @@
 ﻿namespace ChinookAPI; 
 
-public class ArtistUpdateDto {
+public class ArtistReadDto {
     public int ArtistId { get; set; }
-
-    [Required]
-    [StringLength(120)]
     public string Name { get; set; }
+    public virtual ICollection<string> Albums { get; set; }
 }

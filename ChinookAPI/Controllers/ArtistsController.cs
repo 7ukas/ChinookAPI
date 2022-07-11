@@ -5,76 +5,53 @@
 public class ArtistsController : Controller {
     private readonly ChinookContext _context;
     private readonly IMapper _mapper;
+    private readonly ILogger<ArtistsController> _logger;
 
-    public ArtistsController(ChinookContext context, IMapper mapper) {
+    public ArtistsController(ChinookContext context, IMapper mapper, ILogger<ArtistsController> logger) {
         _context = context;
         _mapper = mapper;
+        _logger = logger;
     }
 
-    // POST: api/Artists
-    [HttpPost]
-    public async Task<ActionResult<ArtistCreateDto>> PostArtist(ArtistCreateDto artistDto) {
-        var artist = _mapper.Map<Artist>(artistDto);
-        await _context.Artists.AddAsync(artist);
-        await _context.SaveChangesAsync();
-
-        return CreatedAtAction(nameof(GetArtist), new { id = artist.ArtistId }, artist);
-    }
-
-    // GET: api/Artists
+    // GET: api/Artists/page=5
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<ArtistReadDto>>> GetArtists() {
-        var artists = await _context.Artists.ToListAsync();
+    public async Task<ActionResult<IEnumerable<ArtistsReadDto>>> GetArtists(int page) {
+        try {
+            var artists = await _context.Artists
+            .ProjectTo<ArtistsReadDto>(_mapper.ConfigurationProvider)
+            .ToListAsync();
 
-        var artistsDto = _mapper.Map<IEnumerable<ArtistReadDto>>(artists);
-        return Ok(artistsDto);
+            // Set page
+            if (page < 1 || page > ((artists.Count - 1) / Page.Rows) + 1) {
+                page = 1;
+            }
+
+            int index = (page - 1) * Page.Rows;
+            int count = (page * Page.Rows) > artists.Count ?
+                (artists.Count % Page.Rows) : Page.Rows;
+
+            artists = artists.OrderBy(x => x.ArtistId).ToList().GetRange(index, count);
+
+            return Ok(artists);
+        } catch (Exception ex) {
+            _logger.LogError($"GetArtists(page) threw an exception: {ex.Message}");
+            return StatusCode(500, "Internal Server Error");
+        }
+        
     }
 
     // GET: api/Artists/5
     [HttpGet("{id}")]
     public async Task<ActionResult<ArtistReadDto>> GetArtist(int id) {
-        var artist = await _context.Artists.FindAsync(id);
-        if (artist == null) return NotFound();
-
-        var artistDto = _mapper.Map<ArtistReadDto>(artist);
-        return Ok(artistDto);
-    }
-
-    // PUT: api/Artists/5
-    [HttpPut("{id}")]
-    public async Task<IActionResult> PutArtist(int id, ArtistUpdateDto artistDto) {
-        if (id != artistDto.ArtistId) return BadRequest();
-
-        var artist = await _context.Artists.FindAsync(id);
-        if (artist == null) return NotFound();
-
-        _mapper.Map(artistDto, artist);
-        _context.Entry(artist).State = EntityState.Modified;
-
         try {
-            await _context.SaveChangesAsync();
-        } catch (DbUpdateConcurrencyException) {
-            if (!_ArtistExists(id)) return NotFound();
-            else throw;
+            var artist = await _context.Artists
+            .ProjectTo<ArtistReadDto>(_mapper.ConfigurationProvider)
+            .FirstOrDefaultAsync(x => x.ArtistId == id);
+
+            return Ok(artist);
+        } catch (Exception ex) {
+            _logger.LogError($"GetArtist(id) threw an exception: {ex.Message}");
+            return StatusCode(500, "Internal Server Error");
         }
-
-        return NoContent();
-    }
-
-    // DELETE: api/Artists/5
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteArtist(int? id)
-    {
-        var artist = await _context.Artists.FindAsync(id);
-        if (artist == null) return NotFound();
-
-        _context.Artists.Remove(artist);
-        await _context.SaveChangesAsync();
-
-        return NoContent();
-    }
-
-    private bool _ArtistExists(int id) {
-        return (_context.Artists?.Any(e => e.ArtistId == id)).GetValueOrDefault();
     }
 }
