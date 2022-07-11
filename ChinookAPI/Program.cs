@@ -1,6 +1,5 @@
 using ChinookAPI;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("ChinookDatabaseConnection");
